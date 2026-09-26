@@ -153,17 +153,24 @@ export default function HomePage() {
                 {inspecting ? "Inspecting…" : "Inspect repository"}
               </button>
             </div>
-            <span className="field-hint">Branch, baseline tags, and the allowlisted test command are read from the repository by the backend when available.</span>
+            <span className="field-hint">Branch, version tags, and the allowlisted test command are read from the repository by the backend when available.</span>
           </div>
 
           {metadata ? (
-            <div className="form-option-grid">
-              <div className="field field-wide">
-                <span className="field-hint">
-                  {metadata.source === "live"
-                    ? `Loaded live repository metadata for ${metadata.repository_key}.`
-                    : `Loaded demo fallback metadata for ${metadata.repository_key}. Check backend GitHub access if these branches or tags look generic.`}
-                </span>
+            <div className="form-option-grid compact-form-grid">
+              <div className="metadata-banner field-wide" role="status">
+                <div className="metadata-banner-copy">
+                  <strong>{metadata.repository_key}</strong>
+                  <span>
+                    {metadata.source === "live"
+                      ? "Live repository metadata loaded"
+                      : "Demo metadata fallback loaded"}
+                  </span>
+                </div>
+                <div className="metadata-banner-meta">
+                  <span className="metadata-banner-chip">{metadata.branches.length} branches</span>
+                  <span className="metadata-banner-chip">{metadata.tags.length} tags</span>
+                </div>
               </div>
               <div className="field">
                 <label htmlFor="release-branch">Branch</label>
@@ -172,7 +179,7 @@ export default function HomePage() {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="release-baseline">Baseline</label>
+                <label htmlFor="release-baseline">Version</label>
                 <select id="release-baseline" value={previousTag} onChange={(event) => setPreviousTag(event.target.value)}>
                   <option value="">
                     {branch !== metadata.default_branch
@@ -190,7 +197,7 @@ export default function HomePage() {
                   <option value="">No allowlisted command detected</option>
                   {ALLOWED_TEST_COMMANDS.map((command) => <option value={command} key={command}>{command}</option>)}
                 </select>
-                <span className="field-hint">{metadata.test_command_reason}</span>
+                <span className="field-hint compact-hint">{metadata.test_command_reason}</span>
               </div>
             </div>
           ) : null}

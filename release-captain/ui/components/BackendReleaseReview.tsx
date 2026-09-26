@@ -75,6 +75,23 @@ function sourceLabel(source: unknown): string {
   return "Backend evidence";
 }
 
+function conciseObservedDetail(status: string, detail: string): string | null {
+  const normalized = detail.trim();
+  if (!normalized) return null;
+  if (status === "success" && /^HTTP \d{3}(\s+\w+)*$/i.test(normalized)) return null;
+  return normalized;
+}
+
+function releaseNotesFilename(repositoryUrl: string, version: string): string {
+  const repoName = repositoryUrl
+    .replace(/^https?:\/\//, "")
+    .replace(/^github\.com\//, "")
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const normalizedVersion = version.replace(/[^\w.-]+/g, "-");
+  return `${repoName || "release"}-${normalizedVersion || "notes"}.md`;
+}
+
 function renderNotes(notes: string) {
   const sections: Array<{ title: string; lines: string[] }> = [];
   let current = { title: "Release notes", lines: [] as string[] };
@@ -177,6 +194,8 @@ export function BackendReleaseReview({ sessionId }: BackendReleaseReviewProps) {
   const waitingForApproval = session?.status === "ready_for_approval";
   const riskCount = plan?.risks.length ?? 0;
   const pendingActions = plan?.proposed_actions.length ?? 0;
+  const visibleObservedCalls = session?.observed_tool_calls.slice(0, 6) ?? [];
+  const hiddenObservedCalls = session?.observed_tool_calls.slice(6) ?? [];
   const reviewSummary = plan
     ? [
         {
@@ -263,6 +282,20 @@ export function BackendReleaseReview({ sessionId }: BackendReleaseReviewProps) {
     }
   }
 
+  function downloadReleaseNotes() {
+    if (!plan?.release_notes || !session) return;
+    const content = plan.release_notes.endsWith("\n") ? plan.release_notes : `${plan.release_notes}\n`;
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = releaseNotesFilename(session.repository_url, plan.recommended_version);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) {
     return <main className="shell"><div className="detail-card loading-card" role="status">Loading release evidence from the backend…</div></main>;
   }
@@ -288,7 +321,7 @@ export function BackendReleaseReview({ sessionId }: BackendReleaseReviewProps) {
         <div className="workspace-copy review-repo-copy">
           <p className="eyebrow">Release review · {session.branch}</p>
           <h1 className="session-title review-repo-title">{shortRepositoryLabel(session.repository_url)}</h1>
-          <p className="copy">Baseline {session.previous_tag || textValue(evidence.evidence.base_ref, "latest available release")} · Created {timestampLabel(session.created_at)}</p>
+          <p className="copy">Version {session.previous_tag || textValue(evidence.evidence.base_ref, "latest available release")} · Created {timestampLabel(session.created_at)}</p>
         </div>
         <div className="review-header-actions">
           <span className={`pill ${statusTone(session.status)}`}>{humanStatus(session.status)}</span>
@@ -449,28 +482,68 @@ export function BackendReleaseReview({ sessionId }: BackendReleaseReviewProps) {
 
           <section className="detail-card tool-observation-section" id="observed-tools">
             <div className="panel-heading">
-              <div><p className="eyebrow">Backend activity</p><h2 className="panel-title">Observed tool calls</h2><p className="copy panel-description">GitHub API requests made during collection. Demo entries are labeled as simulated.</p></div>
+              <div><p className="eyebrow">Backend activity</p><h2 className="panel-title">Observed tool calls</h2><p className="copy panel-description">Compact request log for repository collection.</p></div>
               <span className="pill">{session.observed_tool_calls.length}</span>
             </div>
             {session.observed_tool_calls.length ? (
-              <div className="observed-call-list">
-                {session.observed_tool_calls.map((call, index) => (
-                  <article className="observed-call" key={call.id}>
+              <div className="observed-call-log">
+                <div className="observed-call-list">
+                {visibleObservedCalls.map((call, index) => {
+                  const detail = conciseObservedDetail(call.status, call.detail);
+                  return (
+                  <article className="observed-call compact" key={call.id}>
                     <span className="observed-call-index">{String(index + 1).padStart(2, "0")}</span>
                     <div className="observed-call-content">
-                      <div className="observed-call-heading"><strong>{call.method} <code>{call.path}</code></strong><span className={`pill ${statusTone(call.status)}`}>{call.status === "simulated" ? "Simulated" : call.status_code ? `HTTP ${call.status_code}` : prettyLabel(call.status)}</span></div>
-                      <p>{call.detail}</p>
+                      <div className="observed-call-heading">
+                        <strong><span className="observed-call-method">{call.method}</span> <code>{call.path}</code></strong>
+                        <div className="observed-call-meta">
+                          <span className={`pill ${statusTone(call.status)}`}>{call.status === "simulated" ? "Simulated" : call.status_code ? `HTTP ${call.status_code}` : prettyLabel(call.status)}</span>
+                          <span className="observed-call-duration">{call.duration_seconds.toFixed(2)}s</span>
+                        </div>
+                      </div>
+                      {detail ? <p>{detail}</p> : null}
                     </div>
-                    <span className="observed-call-duration">{call.duration_seconds.toFixed(2)}s</span>
                   </article>
-                ))}
+                );
+                })}
+                </div>
+                {hiddenObservedCalls.length ? (
+                  <details className="observed-call-more">
+                    <summary>Show {hiddenObservedCalls.length} more call{hiddenObservedCalls.length === 1 ? "" : "s"}</summary>
+                    <div className="observed-call-list">
+                      {hiddenObservedCalls.map((call, index) => {
+                        const detail = conciseObservedDetail(call.status, call.detail);
+                        return (
+                          <article className="observed-call compact" key={call.id}>
+                            <span className="observed-call-index">{String(index + visibleObservedCalls.length + 1).padStart(2, "0")}</span>
+                            <div className="observed-call-content">
+                              <div className="observed-call-heading">
+                                <strong><span className="observed-call-method">{call.method}</span> <code>{call.path}</code></strong>
+                                <div className="observed-call-meta">
+                                  <span className={`pill ${statusTone(call.status)}`}>{call.status === "simulated" ? "Simulated" : call.status_code ? `HTTP ${call.status_code}` : prettyLabel(call.status)}</span>
+                                  <span className="observed-call-duration">{call.duration_seconds.toFixed(2)}s</span>
+                                </div>
+                              </div>
+                              {detail ? <p>{detail}</p> : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </details>
+                ) : null}
               </div>
             ) : <p className="quiet-note">No GitHub API calls were recorded for this session.</p>}
           </section>
 
           {plan?.release_notes ? (
             <section className="detail-card" id="release-notes">
-              <div className="panel-heading"><div><p className="eyebrow">Draft</p><h2 className="panel-title">Release notes</h2></div></div>
+              <div className="panel-heading">
+                <div><p className="eyebrow">Draft</p><h2 className="panel-title">Release notes</h2></div>
+                <button className="button secondary compact-button" type="button" onClick={downloadReleaseNotes}>
+                  Download .md
+                </button>
+              </div>
               <div className="release-notes-content">{renderNotes(plan.release_notes)}</div>
             </section>
           ) : null}
