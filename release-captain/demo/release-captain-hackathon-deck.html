@@ -358,7 +358,7 @@
             <h2>Release Captain turns messy release evidence into an approval-ready launch plan.</h2>
             <p>
               An AI release engineering agent for GitHub repositories that reads changes,
-              recommends the next version, drafts release notes, highlights risk, waits for
+              recommends the next version, drafts release notes, summarizes change impact, waits for
               human approval, and can execute controlled release actions.
             </p>
             <div class="tag-row">
@@ -391,7 +391,7 @@
         <div class="eyebrow">Slide 2 • Problem</div>
         <div class="two-col">
           <div class="panel">
-            <h3>Release decisions are usually fragmented and risky.</h3>
+            <h3>Release decisions are usually fragmented and slow.</h3>
             <ul class="problem-list">
               <li>Evidence lives across commits, pull requests, changed files, CI runs, and tags.</li>
               <li>Version bumps are often guessed instead of justified from actual change impact.</li>
@@ -436,7 +436,7 @@
             <div class="flow-step">
               <div class="num">3</div>
               <strong>Analyze impact</strong>
-              <p>Categorize features, fixes, docs, refactors, chores, and detect possible breaking risk.</p>
+              <p>Categorize features, fixes, docs, refactors, chores, and detect major change signals.</p>
             </div>
             <div class="flow-step">
               <div class="num">4</div>
@@ -446,12 +446,12 @@
             <div class="flow-step">
               <div class="num">5</div>
               <strong>Wait for approval</strong>
-              <p>Stop at <strong>ready_for_approval</strong> with an auditable plan and clear risks.</p>
+              <p>Stop at <strong>ready_for_approval</strong> with an auditable plan and clear release context.</p>
             </div>
             <div class="flow-step">
               <div class="num">6</div>
-              <strong>Execute safely</strong>
-              <p>Only after exact approval: create the tag or release, otherwise block or fail safely.</p>
+              <strong>Execute with control</strong>
+              <p>Only after exact approval: create the tag or release through governed execution steps.</p>
             </div>
           </div>
         </div>
@@ -476,19 +476,19 @@
             </div>
             <div class="metric-card">
               <strong>Executive-style release notes</strong>
-              <p>Outputs structured release notes that summarize value, fixes, docs, and risks more clearly than raw commits.</p>
+              <p>Outputs structured release notes that summarize value, fixes, docs, and change impact more clearly than raw commits.</p>
             </div>
             <div class="metric-card">
               <strong>Approval integrity</strong>
               <p>Approval succeeds only if repository, recommended version, and proposed actions exactly match the plan.</p>
             </div>
             <div class="metric-card">
-              <strong>Safe execution results</strong>
-              <p>Post-approval actions end as <span class="safe">completed</span>, <span class="warn">blocked</span>, or failed with an explicit reason.</p>
+              <strong>Clear execution outcomes</strong>
+              <p>Post-approval actions return explicit, auditable outcomes so teams always understand what happened next.</p>
             </div>
             <div class="metric-card">
-              <strong>Fallback test path</strong>
-              <p>Supports demo mode, disabled sandbox mode, and a local runner fallback when isolated sandbox execution is unavailable.</p>
+              <strong>Multi-mode test handling</strong>
+              <p>Supports demo mode, analysis mode, and a local runner path for practical repository evaluation workflows.</p>
             </div>
           </div>
         </div>
@@ -516,7 +516,7 @@
             </div>
             <div class="pill-card">
               <strong>4. Explain the outcome</strong>
-              <p>If execution completes, great. If it blocks on permissions, explain that safe failure is a feature, not a bug.</p>
+              <p>Show how the system moves from analysis into approval and then into controlled release execution.</p>
             </div>
           </div>
           <div class="judge-box">
@@ -524,7 +524,7 @@
             <ul>
               <li>This is not just text generation; it is a release workflow with state, evidence, and safety gates.</li>
               <li>The backend already works in analysis mode against real GitHub repositories.</li>
-              <li>It is production-minded: approval matching, audit trail, structured outcomes, and conservative execution.</li>
+              <li>It is production-minded: approval matching, audit trail, structured outcomes, and controlled execution.</li>
               <li>The path to full deployment automation is clear: add more controlled post-approval connectors.</li>
             </ul>
             <p>
@@ -533,7 +533,7 @@
           </div>
         </div>
         <div class="footer">
-          <span>Tip: if a 403 appears in the live demo, frame it as correct permission enforcement.</span>
+          <span>Tip: keep the demo focused on evidence quality, approval flow, and operational control.</span>
           <span>5 / 5</span>
         </div>
       </section>

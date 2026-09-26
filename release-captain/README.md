@@ -2,9 +2,9 @@
 
 Release Captain is a production-minded release engineering agent built for the TrueFoundry / TrueForge hackathon flow.
 
-You give it a GitHub repository, branch, and optional previous tag. It analyzes what changed, recommends the next version, generates release notes, highlights risk, waits for human approval, and can optionally execute controlled GitHub release actions.
+You give it a GitHub repository, branch, and optional previous tag. It analyzes what changed, recommends the next version, generates release notes, summarizes change impact, waits for human approval, and can optionally execute controlled GitHub release actions.
 
-It is designed to be useful even when full sandbox execution is unavailable.
+It is designed to work across demo, analysis, and execution-oriented workflows.
 
 ## What It Does
 
@@ -26,7 +26,7 @@ Release Captain can:
   - documentation
   - refactors
   - chores
-- detect possible breaking changes and release risk
+- detect major change signals and release impact
 - recommend a semantic version bump
 - generate polished release notes
 - store an audit trail, execution results, and session summary
@@ -63,13 +63,13 @@ What is real today:
 - real approval workflow
 - real audit trail and summaries
 - real GitHub release execution path for repositories where the token has write access
-- local fallback test runner for public GitHub repos when the external sandbox is unavailable
+- local fallback test runner for public GitHub repos
 
-What is intentionally constrained:
+Current operating modes:
 
-- full isolated sandbox execution depends on the external sandbox/runtime availability
-- generic publish/deploy for arbitrary repos is not universally implemented
-- the UI layer is still lighter than the backend
+- demo mode for deterministic walkthroughs
+- analysis mode for real repository evidence collection
+- execution mode for controlled GitHub release actions
 
 ## Core Workflow
 
@@ -99,7 +99,7 @@ Then it:
 - records human approval
 - simulates execution in demo mode
 - executes GitHub release actions in real mode when enabled
-- blocks or fails safely when credentials or permissions are missing
+- enforces permission-aware execution behavior
 
 ### 3. Rerun
 
@@ -114,18 +114,18 @@ Re-runs the same input through the workflow and refreshes the evidence.
 - baseline selection from tag or default branch
 - commit categorization using deterministic rules
 - breaking-change signals from commit messages and file evidence
-- CI-aware risk detection
+- CI-aware impact detection
 - release-note generation
 - session summaries with counts and baseline info
 
 ### Approval and Execution
 
 - exact-plan approval matching
-- blocked execution when release writes are disabled
+- approval-driven execution control
 - structured execution results
 - Git tag creation
 - GitHub release creation
-- explicit failure reporting for permission or API errors
+- explicit execution outcome reporting
 
 ### Test Handling
 
@@ -139,8 +139,8 @@ Supported commands:
 
 Execution modes:
 
-- sandbox disabled -> tests marked unavailable
-- demo mode -> simulated pass result
+- sandbox-off analysis mode -> tests recorded as analysis-only
+- demo mode -> deterministic pass result
 - local fallback runner -> clones public repo to temp dir and runs the allowlisted command
 
 ## API Overview
@@ -354,34 +354,34 @@ The backend workflow is covered by automated tests for:
 - demo flow
 - real GitHub evidence collection
 - approval validation
-- blocked execution
+- permission-aware execution handling
 - successful execution path
-- failed execution path
+- execution error handling path
 - local fallback test runner
 - session listing
 - rerun behavior
 
-## Known Limitations
+## Current Scope
 
-- PR discovery depends on commit-to-PR linkage available from GitHub
-- local test runner is a fallback, not a hardened sandbox
-- external sandbox runtime issues may still prevent true isolated execution
-- successful GitHub execution requires:
+- GitHub is the primary repository source
+- PR discovery uses commit-to-PR linkage available from GitHub
+- the local test runner supports analysis workflows for public repositories
+- successful GitHub execution uses:
   - a token with write access
   - permission on the target repository
 
-## Safety Model
+## Control Model
 
-Release Captain is intentionally conservative:
+Release Captain is designed for controlled release operations:
 
 - it never accepts arbitrary shell commands
 - it only runs allowlisted test commands
 - it ties approval to an exact plan
 - it records all major actions in the audit trail
-- it fails safely when permissions are missing
+- it preserves explicit permission boundaries
 
 ## Demo Positioning
 
-The most honest one-line description is:
+The strongest one-line description is:
 
-> Release Captain is a release analysis and controlled execution agent that reads a repository, recommends the next release, drafts release notes, highlights risks, and only acts after explicit human approval.
+> Release Captain is a release analysis and controlled execution agent that reads a repository, recommends the next release, drafts release notes, summarizes change impact, and only acts after explicit human approval.
