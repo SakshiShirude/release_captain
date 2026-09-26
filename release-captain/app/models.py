@@ -75,6 +75,18 @@ class ExecutionActionResult(BaseModel):
     detail: str
 
 
+class SessionSummary(BaseModel):
+    commit_count: int = 0
+    pull_request_count: int = 0
+    changed_file_count: int = 0
+    ci_run_count: int = 0
+    risk_count: int = 0
+    executed_action_count: int = 0
+    baseline: Optional[str] = None
+    baseline_reason: Optional[str] = None
+    latest_error: Optional[str] = None
+
+
 class ApprovalRequest(BaseModel):
     approved: bool
     plan_version: str
@@ -113,4 +125,6 @@ class ReleaseSession(BaseModel):
     plan: Optional[ReleasePlan] = None
     audit: list[AuditEvent] = Field(default_factory=list)
     approval: Optional[ApprovalRequest] = None
+    execution_results: list[ExecutionActionResult] = Field(default_factory=list)
+    summary: SessionSummary = Field(default_factory=SessionSummary)
     evidence: dict[str, Any] = Field(default_factory=dict)

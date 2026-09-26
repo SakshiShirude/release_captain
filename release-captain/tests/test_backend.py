@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
-from app.models import TestResult as TestOutcome
+from app.models import TestResult as ResultOutcome
 from app.routes import SESSIONS
 from app.services import execution_service, github_service
 
@@ -39,12 +39,16 @@ def test_demo_flow_waits_for_approval_and_validates_plan() -> None:
     assert "Add release capsule summary" in session["plan"]["release_notes"]
     assert "feat: add release capsule summary" not in session["plan"]["release_notes"]
     assert session["test_result"]["status"] == "unavailable"
+    assert session["summary"]["commit_count"] == 3
+    assert session["summary"]["baseline_reason"] == "demo_mode"
     bad = client.post(f"/api/sessions/{session['id']}/approve", json={"approved": True, "plan_version": "v9.9.9", "repository_url": session["repository_url"], "actions": session["plan"]["proposed_actions"]})
     assert bad.status_code == 409
     good = client.post(f"/api/sessions/{session['id']}/approve", json={"approved": True, "plan_version": session["plan"]["recommended_version"], "repository_url": session["repository_url"], "actions": session["plan"]["proposed_actions"]})
     assert good.status_code == 200
     approved = good.json()
     assert approved["status"] == "completed"
+    assert len(approved["execution_results"]) == len(approved["plan"]["proposed_actions"])
+    assert approved["summary"]["executed_action_count"] == len(approved["plan"]["proposed_actions"])
     assert approved["audit"][-1]["action"] == "execute_release"
     assert approved["audit"][-1]["status"] == "completed"
 
@@ -160,6 +164,8 @@ def test_real_mode_collects_github_evidence_and_surfaces_risks(monkeypatch) -> N
     assert session["test_result"]["status"] == "unavailable"
     assert session["evidence"]["source"] == "github"
     assert session["evidence"]["base_ref"] == "v1.2.3"
+    assert session["summary"]["changed_file_count"] == 2
+    assert session["summary"]["ci_run_count"] == 1
     assert len(session["pull_requests"]) == 2
     assert session["evidence"]["changed_files"][1]["status"] == "removed"
     assert "## Release Summary" in session["plan"]["release_notes"]
@@ -217,6 +223,8 @@ def test_real_mode_approval_stays_blocked_without_execution_runner(monkeypatch) 
     assert approve_response.status_code == 200
     approved = approve_response.json()
     assert approved["status"] == "approved"
+    assert approved["execution_results"][0]["status"] == "blocked"
+    assert approved["summary"]["executed_action_count"] == 1
     assert approved["audit"][-1]["action"] == "execute_release"
     assert approved["audit"][-1]["status"] == "blocked"
 
@@ -270,8 +278,60 @@ def test_real_mode_execution_can_complete_with_github_executor(monkeypatch) -> N
     assert approve_response.status_code == 200
     approved = approve_response.json()
     assert approved["status"] == "completed"
+    assert len(approved["execution_results"]) == 2
+    assert approved["summary"]["executed_action_count"] == 2
     assert approved["audit"][-1]["action"] == "execute_release"
     assert approved["audit"][-1]["status"] == "completed"
+
+
+def test_real_mode_execution_failure_returns_failed_session(monkeypatch) -> None:
+    monkeypatch.setenv("DEMO_MODE", "false")
+    monkeypatch.setenv("RELEASE_CAPTAIN_EXECUTION_ENABLED", "true")
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+    get_settings.cache_clear()
+
+    async def fake_collect(*args, **kwargs):
+        return (
+            [github_service.categorize("fix: patch parser", "abc123", "release-bot")],
+            [],
+            {
+                "source": "github",
+                "current_version": "v2.0.0",
+                "changed_files": [],
+                "ci_runs": [],
+                "base_ref": "v2.0.0",
+                "head_sha": "abc123",
+            },
+        )
+
+    async def fake_create_release_artifacts(*args, **kwargs):
+        raise RuntimeError("GitHub release creation failed")
+
+    monkeypatch.setattr("app.routes.collect", fake_collect)
+    monkeypatch.setattr("app.services.release_service.create_release_artifacts", fake_create_release_artifacts)
+
+    response = client.post(
+        "/api/sessions",
+        json={"repository_url": "https://github.com/acme/widgets", "branch": "main", "test_command": "pytest"},
+    )
+    assert response.status_code == 201
+    session = response.json()
+
+    approve_response = client.post(
+        f"/api/sessions/{session['id']}/approve",
+        json={
+            "approved": True,
+            "plan_version": session["plan"]["recommended_version"],
+            "repository_url": session["repository_url"],
+            "actions": session["plan"]["proposed_actions"],
+        },
+    )
+    assert approve_response.status_code == 200
+    approved = approve_response.json()
+    assert approved["status"] == "failed"
+    assert approved["execution_results"][-1]["status"] == "failed"
+    assert approved["audit"][-1]["action"] == "execute_release"
+    assert approved["audit"][-1]["status"] == "failed"
 
 
 def test_local_test_runner_fallback_can_be_used_when_enabled(monkeypatch) -> None:
@@ -293,8 +353,8 @@ def test_local_test_runner_fallback_can_be_used_when_enabled(monkeypatch) -> Non
             },
         )
 
-    def fake_run_local(command: str, repository_url: str, branch: str, timeout_seconds: float) -> TestOutcome:
-        return TestOutcome(
+    def fake_run_local(command: str, repository_url: str, branch: str, timeout_seconds: float) -> ResultOutcome:
+        return ResultOutcome(
             command=command,
             status="passed",
             exit_code=0,
@@ -317,3 +377,42 @@ def test_local_test_runner_fallback_can_be_used_when_enabled(monkeypatch) -> Non
     assert session["status"] == "ready_for_approval"
     assert session["test_result"]["status"] == "passed"
     assert session["test_result"]["sandbox_provider"] == "local-temp-runner"
+
+
+def test_sessions_can_be_listed_and_rerun(monkeypatch) -> None:
+    counter = {"value": 0}
+
+    async def fake_collect(*args, **kwargs):
+        counter["value"] += 1
+        return (
+            [github_service.categorize(f"fix: patch parser {counter['value']}", f"sha-{counter['value']}", "release-bot")],
+            [],
+            {
+                "source": "github",
+                "current_version": "v2.0.0",
+                "changed_files": [],
+                "ci_runs": [],
+                "base_ref": "v2.0.0",
+                "baseline_reason": "requested_tag",
+            },
+        )
+
+    monkeypatch.setattr("app.routes.collect", fake_collect)
+
+    created = client.post(
+        "/api/sessions",
+        json={"repository_url": "https://github.com/acme/widgets", "branch": "main", "previous_tag": "v2.0.0", "test_command": "pytest"},
+    )
+    assert created.status_code == 201
+    session = created.json()
+
+    listed = client.get("/api/sessions")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 1
+
+    rerun = client.post(f"/api/sessions/{session['id']}/rerun")
+    assert rerun.status_code == 200
+    rerun_session = rerun.json()
+    assert rerun_session["status"] == "ready_for_approval"
+    assert rerun_session["commits"][0]["message"] == "fix: patch parser 2"
+    assert rerun_session["summary"]["commit_count"] == 1

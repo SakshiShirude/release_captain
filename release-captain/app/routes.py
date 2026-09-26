@@ -5,7 +5,7 @@ from typing import Union
 from fastapi import APIRouter, HTTPException
 
 from app.config import get_settings
-from app.models import ApprovalRequest, AuditEvent, ReleaseSession, SessionCreate, SessionStatus
+from app.models import ApprovalRequest, AuditEvent, ReleaseSession, SessionCreate, SessionStatus, SessionSummary
 from app.services.analysis_service import analyze
 from app.services.github_service import collect
 from app.services.execution_service import run
@@ -19,32 +19,35 @@ def event(action: str, status: str, detail: str) -> AuditEvent:
     return AuditEvent(action=action, status=status, detail=detail)
 
 
-@router.get("/health")
-async def health() -> dict[str, Union[str, bool]]:
-    settings = get_settings()
-    return {
-        "status": "ok",
-        "demo_mode": settings.demo_mode,
-        "sandbox_enabled": settings.sandbox_enabled,
-        "execution_enabled": settings.execution_enabled,
-        "local_test_runner_enabled": settings.local_test_runner_enabled,
-        "analysis_only": not settings.sandbox_enabled,
-    }
-
-
-@router.post("/sessions", response_model=ReleaseSession, status_code=201)
-async def create_session(request: SessionCreate) -> ReleaseSession:
-    settings = get_settings()
-    session = ReleaseSession(
-        id=str(uuid4()),
-        repository_url=str(request.repository_url),
-        branch=request.branch,
-        previous_tag=request.previous_tag,
-        test_command=request.test_command,
-        analysis_only=not settings.sandbox_enabled,
-        sandbox_enabled=settings.sandbox_enabled,
-        status=SessionStatus.collecting,
+def _refresh_summary(session: ReleaseSession) -> None:
+    session.summary = SessionSummary(
+        commit_count=len(session.commits),
+        pull_request_count=len(session.pull_requests),
+        changed_file_count=len(session.evidence.get("changed_files", [])),
+        ci_run_count=len(session.evidence.get("ci_runs", [])),
+        risk_count=len(session.plan.risks) if session.plan else 0,
+        executed_action_count=len(session.execution_results),
+        baseline=session.evidence.get("base_ref") or session.previous_tag,
+        baseline_reason=session.evidence.get("baseline_reason"),
+        latest_error=next((item.detail for item in reversed(session.audit) if item.status == "failed"), None) if session.status == SessionStatus.failed else None,
     )
+
+
+def _reset_session_state(session: ReleaseSession, settings) -> None:
+    session.analysis_only = not settings.sandbox_enabled
+    session.sandbox_enabled = settings.sandbox_enabled
+    session.status = SessionStatus.collecting
+    session.commits = []
+    session.pull_requests = []
+    session.test_result = None
+    session.plan = None
+    session.approval = None
+    session.execution_results = []
+    session.evidence = {}
+    session.summary = SessionSummary()
+
+
+async def _run_release_workflow(session: ReleaseSession, settings) -> ReleaseSession:
     session.audit.append(event("collect_repository", "started", f"Reading {session.repository_url}@{session.branch}"))
     try:
         session.commits, session.pull_requests, session.evidence = await collect(
@@ -91,6 +94,42 @@ async def create_session(request: SessionCreate) -> ReleaseSession:
     except (ValueError, RuntimeError) as exc:
         session.status = SessionStatus.failed
         session.audit.append(event("session", "failed", str(exc)))
+    _refresh_summary(session)
+    return session
+
+
+@router.get("/health")
+async def health() -> dict[str, Union[str, bool]]:
+    settings = get_settings()
+    return {
+        "status": "ok",
+        "demo_mode": settings.demo_mode,
+        "sandbox_enabled": settings.sandbox_enabled,
+        "execution_enabled": settings.execution_enabled,
+        "local_test_runner_enabled": settings.local_test_runner_enabled,
+        "analysis_only": not settings.sandbox_enabled,
+    }
+
+
+@router.get("/sessions", response_model=list[ReleaseSession])
+async def list_sessions() -> list[ReleaseSession]:
+    return list(SESSIONS.values())
+
+
+@router.post("/sessions", response_model=ReleaseSession, status_code=201)
+async def create_session(request: SessionCreate) -> ReleaseSession:
+    settings = get_settings()
+    session = ReleaseSession(
+        id=str(uuid4()),
+        repository_url=str(request.repository_url),
+        branch=request.branch,
+        previous_tag=request.previous_tag,
+        test_command=request.test_command,
+        analysis_only=not settings.sandbox_enabled,
+        sandbox_enabled=settings.sandbox_enabled,
+        status=SessionStatus.collecting,
+    )
+    await _run_release_workflow(session, settings)
     SESSIONS[session.id] = session
     return session
 
@@ -105,6 +144,16 @@ def get_session_or_404(session_id: str) -> ReleaseSession:
 @router.get("/sessions/{session_id}", response_model=ReleaseSession)
 async def get_session(session_id: str) -> ReleaseSession:
     return get_session_or_404(session_id)
+
+
+@router.post("/sessions/{session_id}/rerun", response_model=ReleaseSession)
+async def rerun_session(session_id: str) -> ReleaseSession:
+    settings = get_settings()
+    session = get_session_or_404(session_id)
+    session.audit.append(event("session", "restarted", "Re-running release analysis with the same input"))
+    _reset_session_state(session, settings)
+    await _run_release_workflow(session, settings)
+    return session
 
 
 @router.post("/sessions/{session_id}/approve", response_model=ReleaseSession)
@@ -125,6 +174,7 @@ async def approve_session(session_id: str, request: ApprovalRequest) -> ReleaseS
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _refresh_summary(session)
     return session
 
 
@@ -133,6 +183,7 @@ async def request_changes(session_id: str, request: dict[str, str]) -> ReleaseSe
     session = get_session_or_404(session_id)
     session.status = SessionStatus.rejected
     session.audit.append(event("approval", "changes_requested", request.get("comment", "Changes requested")))
+    _refresh_summary(session)
     return session
 
 
