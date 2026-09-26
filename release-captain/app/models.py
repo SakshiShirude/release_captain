@@ -40,6 +40,17 @@ class PullRequestChange(BaseModel):
     merged: bool = True
 
 
+class ObservedToolCall(BaseModel):
+    id: str
+    tool_name: str
+    method: str
+    path: str
+    status: str
+    status_code: Optional[int] = None
+    duration_seconds: float = 0.0
+    detail: str
+
+
 class TestResult(BaseModel):
     command: str
     status: str
@@ -95,6 +106,10 @@ class ApprovalRequest(BaseModel):
     comment: Optional[str] = None
 
 
+class ChangeRequest(BaseModel):
+    comment: str = Field(min_length=4, max_length=2000)
+
+
 class AuditEvent(BaseModel):
     timestamp: datetime = Field(default_factory=now)
     action: str
@@ -109,6 +124,16 @@ class SessionCreate(BaseModel):
     test_command: str = "pytest"
 
 
+class RepositoryMetadata(BaseModel):
+    repository_key: str
+    default_branch: str
+    branches: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    test_command: str = ""
+    test_command_reason: str
+    source: str = "live"
+
+
 class ReleaseSession(BaseModel):
     id: str
     repository_url: str
@@ -121,6 +146,7 @@ class ReleaseSession(BaseModel):
     created_at: datetime = Field(default_factory=now)
     commits: list[CommitChange] = Field(default_factory=list)
     pull_requests: list[PullRequestChange] = Field(default_factory=list)
+    observed_tool_calls: list[ObservedToolCall] = Field(default_factory=list)
     test_result: Optional[TestResult] = None
     plan: Optional[ReleasePlan] = None
     audit: list[AuditEvent] = Field(default_factory=list)

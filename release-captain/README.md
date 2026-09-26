@@ -318,6 +318,28 @@ The agent is configured to:
 - stop at human approval
 - behave safely when sandbox execution is unavailable
 
+## Web dashboard and backend
+
+The Next.js dashboard uses same-origin API routes as a server-side proxy to the FastAPI service. Repository metadata, release sessions, evidence, test output, audit history, and approval requests all come from the FastAPI API. Set `RELEASE_CAPTAIN_API_URL` in the Next.js server environment when the backend is not available at `http://127.0.0.1:8000`.
+
+Run the backend and dashboard in separate terminals:
+
+```bash
+cd release-captain
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+```bash
+cd release-captain/ui
+RELEASE_CAPTAIN_API_URL=http://127.0.0.1:8000 npm run dev
+```
+
+The default backend configuration uses deterministic demo evidence, disables sandbox execution, and disables real release execution. The dashboard labels simulated evidence and requires an explicit confirmation before sending the exact approved plan to the backend. Real release writes remain disabled unless `RELEASE_CAPTAIN_EXECUTION_ENABLED=true` is set in the backend environment.
+
+Sessions and audit events are currently held in backend process memory. Restarting the FastAPI process clears them.
+
+---
+
 ## Project Structure
 
 ```text
@@ -341,7 +363,10 @@ release-captain/
 │   └── release-engineering.md
 ├── tests/
 │   └── test_backend.py
-├── ui/
+├── ui/                      # Web interface for human operators
+│   ├── app/                 # Next.js application routes
+│   ├── components/          # Release review and evidence views
+│   └── lib/                 # FastAPI client and server-side proxy
 ├── connect.py
 ├── trueforge.yaml
 └── requirements.txt
