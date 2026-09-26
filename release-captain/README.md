@@ -2,6 +2,8 @@
 
 Release Captain is a production-minded release engineering agent built for the TrueFoundry / TrueForge hackathon flow.
 
+**Submission write-up:** [PDF](./SUBMISSION_WRITEUP.pdf) · [Markdown source](./SUBMISSION_WRITEUP.md)
+
 You give it a GitHub repository, branch, and optional previous tag. It analyzes what changed, recommends the next version, generates release notes, summarizes change impact, waits for human approval, and can optionally execute controlled GitHub release actions.
 
 It is designed to work across demo, analysis, and execution-oriented workflows.

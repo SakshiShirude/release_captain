@@ -1,11 +1,17 @@
-# Release Captain — Solution Writeup
+# Release Captain
 
-Release Captain solves a common release-engineering problem: deciding what is meaningful to ship is usually manual, fragmented, and slow. Teams must inspect commits, pull requests, changed files, CI runs, tags, and release notes, then still make a judgment call on versioning and execution. Our goal was to turn that into a structured, human-governed AI workflow.
+*An evidence-led release workflow with a human approval gate.*
 
-The agent takes a GitHub repository, branch, optional previous tag, and test command. It then collects repository evidence, categorizes changes into features, fixes, documentation, refactors, and chores, detects major change signals, recommends the next semantic version, drafts release notes, and stops at a strict approval gate. After that point, it can optionally execute controlled release actions such as creating a tag or GitHub release.
+## Problem and workflow
 
-The architecture has two layers. The backend is a FastAPI service that manages release sessions, audit events, approval validation, evidence, test results, and execution outcomes. The agent layer is connected through TrueForge, which is used to define the release-engineering behavior, create synced agents, and run persistent sessions. This gives us a real orchestration layer instead of a one-shot script.
+Release teams reconcile commits, pull requests, diffs, tags and CI to choose versions and write notes. Scattered evidence makes signals easy to miss.
 
-What is real today: GitHub repository analysis, semantic version recommendation, structured release notes, approval matching, audit trail, and governed execution outcomes. Demo mode is available for deterministic local development, while real execution can operate with the appropriate GitHub permissions.
+Users provide a repository, branch, optional tag and allowlisted test command. Live mode uses that tag, the latest tag or a default-branch comparison, then collects commits, linked pull requests, changed-file summaries and recent Actions runs. Commit-message rules categorize changes and flag breaking markers; removed files and CI failures become risks. Release Captain recommends a semantic version and drafts notes. The review shows evidence, risks, test status and audit events, then stops at `WAITING FOR HUMAN APPROVAL`. Approval must match the repository, version and action list.
 
-The current scope is intentionally focused: GitHub-first analysis, a strong backend workflow, and approval-driven release control. The result is a production-minded release copilot: evidence first, human approval before action, and clear operational traceability throughout the session lifecycle.
+## Architecture and TrueForge
+
+The Next.js dashboard uses FastAPI for GitHub collection, deterministic analysis, session state, approval validation, audit and execution. A checked-in TrueForge manifest and Python SDK connector can register or sync the agent and stream sessions when TrueForge and GitHub MCP are configured. Dashboard recommendations use deterministic FastAPI rules; its sessions do not pass through the connector.
+
+## What's implemented and current limits
+
+Live GitHub analysis is implemented. After exact-plan approval, the backend can create a Git tag and GitHub release when execution is enabled and the token has write access. Demo evidence, passing tests and post-approval actions are simulated. TrueForge sandbox is disabled by default. The optional test runner executes allowlisted commands on local clones of public repositories, outside a sandbox. Version bumps follow commit prefixes and explicit breaking markers; removed files and CI failures appear as risks. These checks are limited; review each recommendation. Session and audit history are in memory; backend restart clears them. Publishing and deployment are not implemented.
