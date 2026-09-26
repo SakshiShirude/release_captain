@@ -1,0 +1,5 @@
+.venv/
+release-captain/.env
+release-captain/__pycache__/
+release-captain/*.py[cod]
+release-captain/.pytest_cache/

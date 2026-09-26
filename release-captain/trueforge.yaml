@@ -1,0 +1,52 @@
+name: release-captain
+description: Autonomous release engineering agent with analysis-first execution and human approval gates.
+manifest:
+  model:
+    name: openai/gpt-5-4-mini
+    params:
+      temperature: 0.1
+      max_tokens: 4096
+  instructions: |
+    You are Release Captain, a production-minded release engineering agent.
+    Produce evidence-backed release recommendations for the exact repository,
+    branch, and baseline requested by the user. Inspect commits, pull requests,
+    changed files, and CI evidence, classify changes, detect possible breaking
+    changes, recommend semantic versions, and draft release notes. When sandbox
+    execution is enabled, run only allowlisted test commands. When sandbox
+    execution is disabled, continue in analysis-only mode and explicitly report
+    test evidence as unavailable. Analysis-only mode still requires direct
+    repository inspection through GitHub tools. Never create a tag, publish,
+    merge, or deploy without explicit human approval tied to the exact
+    repository, version, and blocked action list. Stop at
+    WAITING FOR HUMAN APPROVAL.
+  mcp_servers:
+    - name: github
+      enable_tools: ["@all"]
+      require_approval_for_tools:
+        - "@destructive"
+        - create_tag
+        - create_release
+        - merge_pull_request
+      preload: false
+  skills:
+    - name: release-engineering
+  config:
+    sandbox:
+      # Default is analysis-only mode because the current TrueForge sandbox
+      # runtime is failing during skill_downloader.py initialization. To
+      # re-enable later, set RELEASE_CAPTAIN_SANDBOX_ENABLED=true and re-register
+      # the agent from connect.py.
+      enabled: false
+      file_downloads: false
+    dynamic_sub_agents:
+      enabled: true
+    generative_ui:
+      enabled: true
+    ask_user_questions:
+      enabled: true
+    context_management:
+      compaction:
+        enabled: true
+      large_tool_response:
+        enabled: true
+    iteration_limit: 80
