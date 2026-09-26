@@ -69,7 +69,9 @@ def build_agent_spec() -> AgentSpec:
         mcp_servers=mcp_servers,
         skills=skills,
         config=RuntimeConfig(
-            sandbox=SandboxConfig(enabled=True, file_downloads=True),
+            # Temporary workaround for the current TrueForge sandbox runtime
+            # failure. Re-enable once skill_downloader.py is fixed/upgraded.
+            sandbox=SandboxConfig(enabled=False),
             dynamic_sub_agents=DynamicSubAgentsConfig(enabled=True),
             generative_ui=GenerativeUiConfig(enabled=True),
             ask_user_questions=AskUserQuestionsConfig(enabled=True),
