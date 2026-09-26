@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Captain — Hackathon Demo Deck</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --slide: #ffffff;
+        --text: #111827;
+        --muted: #5b6475;
+        --line: #d9dfeb;
+        --accent: #2563eb;
+        --accent-soft: #e8f0ff;
+        --success: #0f766e;
+        --warn: #b45309;
+        --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 24px;
+        background: rgba(245, 247, 251, 0.9);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(217, 223, 235, 0.85);
+      }
+
+      .topbar h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .topbar span {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .deck {
+        padding: 28px 20px 40px;
+      }
+
+      .slide {
+        width: min(1280px, calc(100vw - 40px));
+        min-height: min(720px, calc(100vh - 110px));
+        margin: 0 auto 28px;
+        background: var(--slide);
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 42px 48px 34px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 22px;
+      }
+
+      .eyebrow {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(36px, 4vw, 64px);
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+      }
+
+      h3 {
+        margin: 0 0 10px;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      p,
+      li,
+      td,
+      th {
+        font-size: 21px;
+        line-height: 1.45;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 24px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 34px;
+        align-items: stretch;
+      }
+
+      .hero-copy {
+        display: grid;
+        align-content: center;
+        gap: 18px;
+      }
+
+      .highlight-box,
+      .panel,
+      .metric-card,
+      .pill-card {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: #fff;
+      }
+
+      .highlight-box {
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        padding: 28px;
+        display: grid;
+        align-content: space-between;
+        gap: 20px;
+      }
+
+      .big-stat {
+        font-size: 62px;
+        font-weight: 750;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+
+      .panel {
+        padding: 24px 26px;
+        background: #fcfdff;
+      }
+
+      .problem-list li {
+        margin-bottom: 14px;
+      }
+
+      .opportunity {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--accent-soft);
+        color: #12336d;
+        font-size: 20px;
+        line-height: 1.4;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 14px;
+        align-items: center;
+      }
+
+      .flow-step {
+        min-height: 182px;
+        padding: 18px 16px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: #fff;
+        display: grid;
+        align-content: start;
+        gap: 12px;
+      }
+
+      .flow-step .num {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        display: inline-grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      .flow-arrow {
+        text-align: center;
+        font-size: 32px;
+        color: #95a1b5;
+      }
+
+      .grid-2x3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .metric-card {
+        padding: 20px 18px;
+        background: #fbfcfe;
+        min-height: 160px;
+      }
+
+      .metric-card strong {
+        display: block;
+        font-size: 22px;
+        line-height: 1.2;
+        margin-bottom: 10px;
+      }
+
+      .metric-card p {
+        font-size: 18px;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .tag {
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        font-size: 16px;
+        color: #344054;
+      }
+
+      .demo-layout {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 28px;
+      }
+
+      .demo-steps {
+        display: grid;
+        gap: 14px;
+      }
+
+      .pill-card {
+        padding: 16px 18px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .pill-card strong {
+        font-size: 21px;
+      }
+
+      .judge-box {
+        padding: 22px 24px;
+        border-radius: 24px;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        border: 1px solid #dbe7ff;
+        display: grid;
+        gap: 14px;
+      }
+
+      .judge-box ul li {
+        margin-bottom: 10px;
+      }
+
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .footer strong {
+        color: var(--text);
+      }
+
+      .safe {
+        color: var(--success);
+        font-weight: 700;
+      }
+
+      .warn {
+        color: var(--warn);
+        font-weight: 700;
+      }
+
+      @media (max-width: 1024px) {
+        .hero,
+        .two-col,
+        .demo-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .flow {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .grid-2x3 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .slide {
+          padding: 28px 24px;
+          width: calc(100vw - 24px);
+        }
+
+        .grid-2x3,
+        .flow {
+          grid-template-columns: 1fr;
+        }
+
+        p,
+        li,
+        td,
+        th {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>Release Captain — Hackathon Demo Deck</h1>
+      <span>5-slide browser presentation • open this file locally and present full-screen</span>
+    </div>
+
+    <main class="deck">
+      <section class="slide">
+        <div class="eyebrow">Slide 1 • Title</div>
+        <div class="hero">
+          <div class="hero-copy">
+            <h2>Release Captain turns messy release evidence into an approval-ready launch plan.</h2>
+            <p>
+              An AI release engineering agent for GitHub repositories that reads changes,
+              recommends the next version, drafts release notes, highlights risk, waits for
+              human approval, and can execute controlled release actions.
+            </p>
+            <div class="tag-row">
+              <div class="tag">GitHub analysis</div>
+              <div class="tag">Semantic versioning</div>
+              <div class="tag">Human approval gate</div>
+              <div class="tag">Safe execution</div>
+            </div>
+          </div>
+          <div class="highlight-box">
+            <div>
+              <div class="subtle">Core promise</div>
+              <div class="big-stat">Repo → Release</div>
+            </div>
+            <div>
+              <p>
+                Instead of manually scanning commits, tags, PRs, CI, and changelogs, the agent
+                produces one structured release decision with evidence.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span><strong>Release Captain</strong> • production-minded AI workflow, not just a chatbot</span>
+          <span>1 / 5</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Slide 2 • Problem</div>
+        <div class="two-col">
+          <div class="panel">
+            <h3>Release decisions are usually fragmented and risky.</h3>
+            <ul class="problem-list">
+              <li>Evidence lives across commits, pull requests, changed files, CI runs, and tags.</li>
+              <li>Version bumps are often guessed instead of justified from actual change impact.</li>
+              <li>Release notes get rushed and end up as low-quality commit dumps.</li>
+              <li>Teams either automate too aggressively or slow everything down with manual checks.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>The hackathon opportunity</h3>
+            <p>
+              Build an agent that behaves like a release engineer: gather evidence, reason over
+              change impact, write the release story clearly, and stop at a strict human gate
+              before doing anything dangerous.
+            </p>
+            <div class="opportunity">
+              The value is not “AI generates text.” The value is
+              <strong>AI turning repository state into a controlled decision workflow.</strong>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Why this matters: releases are where code quality, safety, and business impact meet.</span>
+          <span>2 / 5</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Slide 3 • Workflow</div>
+        <div>
+          <h2 style="font-size: 42px; margin-bottom: 20px;">The agent follows a strict release workflow from analysis to approval.</h2>
+          <div class="flow">
+            <div class="flow-step">
+              <div class="num">1</div>
+              <strong>Create session</strong>
+              <p>Input a repository URL, branch, optional previous tag, and allowlisted test command.</p>
+            </div>
+            <div class="flow-step">
+              <div class="num">2</div>
+              <strong>Collect evidence</strong>
+              <p>Read commits, merged PRs, changed files, tags, and recent GitHub Actions runs.</p>
+            </div>
+            <div class="flow-step">
+              <div class="num">3</div>
+              <strong>Analyze impact</strong>
+              <p>Categorize features, fixes, docs, refactors, chores, and detect possible breaking risk.</p>
+            </div>
+            <div class="flow-step">
+              <div class="num">4</div>
+              <strong>Recommend version</strong>
+              <p>Generate the next semantic version and polished release notes from evidence.</p>
+            </div>
+            <div class="flow-step">
+              <div class="num">5</div>
+              <strong>Wait for approval</strong>
+              <p>Stop at <strong>ready_for_approval</strong> with an auditable plan and clear risks.</p>
+            </div>
+            <div class="flow-step">
+              <div class="num">6</div>
+              <strong>Execute safely</strong>
+              <p>Only after exact approval: create the tag or release, otherwise block or fail safely.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>This is a stateful backend workflow, not a one-shot prompt response.</span>
+          <span>3 / 5</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Slide 4 • What is real today</div>
+        <div>
+          <h2 style="font-size: 42px; margin-bottom: 18px;">The backend already does real release reasoning and safe control flow.</h2>
+          <div class="grid-2x3">
+            <div class="metric-card">
+              <strong>Real GitHub analysis</strong>
+              <p>Parses the repo, selects a baseline, compares changes, and gathers CI evidence through the GitHub API.</p>
+            </div>
+            <div class="metric-card">
+              <strong>Semver recommendation</strong>
+              <p>Maps commit evidence into major, minor, or patch with deterministic logic and breaking-change detection.</p>
+            </div>
+            <div class="metric-card">
+              <strong>Executive-style release notes</strong>
+              <p>Outputs structured release notes that summarize value, fixes, docs, and risks more clearly than raw commits.</p>
+            </div>
+            <div class="metric-card">
+              <strong>Approval integrity</strong>
+              <p>Approval succeeds only if repository, recommended version, and proposed actions exactly match the plan.</p>
+            </div>
+            <div class="metric-card">
+              <strong>Safe execution results</strong>
+              <p>Post-approval actions end as <span class="safe">completed</span>, <span class="warn">blocked</span>, or failed with an explicit reason.</p>
+            </div>
+            <div class="metric-card">
+              <strong>Fallback test path</strong>
+              <p>Supports demo mode, disabled sandbox mode, and a local runner fallback when isolated sandbox execution is unavailable.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Strongest differentiator: auditable automation with human control.</span>
+          <span>4 / 5</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <div class="eyebrow">Slide 5 • Live demo plan</div>
+        <div class="demo-layout">
+          <div class="demo-steps">
+            <div class="pill-card">
+              <strong>1. Show the API in real analysis mode</strong>
+              <p>Create a session for a public GitHub repo and show the response reaches <strong>ready_for_approval</strong>.</p>
+            </div>
+            <div class="pill-card">
+              <strong>2. Open evidence and audit</strong>
+              <p>Point to collected commits, changed files, CI signals, recommended version, and generated release notes.</p>
+            </div>
+            <div class="pill-card">
+              <strong>3. Approve the exact plan</strong>
+              <p>Demonstrate that the human gate is strict and the plan cannot be changed silently at approval time.</p>
+            </div>
+            <div class="pill-card">
+              <strong>4. Explain the outcome</strong>
+              <p>If execution completes, great. If it blocks on permissions, explain that safe failure is a feature, not a bug.</p>
+            </div>
+          </div>
+          <div class="judge-box">
+            <h3>What judges should remember</h3>
+            <ul>
+              <li>This is not just text generation; it is a release workflow with state, evidence, and safety gates.</li>
+              <li>The backend already works in analysis mode against real GitHub repositories.</li>
+              <li>It is production-minded: approval matching, audit trail, structured outcomes, and conservative execution.</li>
+              <li>The path to full deployment automation is clear: add more controlled post-approval connectors.</li>
+            </ul>
+            <p>
+              Closing line: <strong>Release Captain converts tribal release knowledge into a verified, human-governed system.</strong>
+            </p>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Tip: if a 403 appears in the live demo, frame it as correct permission enforcement.</span>
+          <span>5 / 5</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
