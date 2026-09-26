@@ -69,6 +69,12 @@ class ReleasePlan(BaseModel):
     proposed_actions: list[str]
 
 
+class ExecutionActionResult(BaseModel):
+    action: str
+    status: str
+    detail: str
+
+
 class ApprovalRequest(BaseModel):
     approved: bool
     plan_version: str
@@ -97,6 +103,8 @@ class ReleaseSession(BaseModel):
     branch: str
     previous_tag: Optional[str]
     test_command: str
+    analysis_only: bool = True
+    sandbox_enabled: bool = False
     status: SessionStatus
     created_at: datetime = Field(default_factory=now)
     commits: list[CommitChange] = Field(default_factory=list)

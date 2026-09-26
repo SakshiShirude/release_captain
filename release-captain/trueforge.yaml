@@ -1,20 +1,24 @@
 name: release-captain
-description: Autonomous release engineering agent with sandbox test verification and human approval gates.
+description: Autonomous release engineering agent with analysis-first execution and human approval gates.
 manifest:
   model:
     name: openai/gpt-5-4-mini
     params:
-      temperature: 0.2
+      temperature: 0.1
       max_tokens: 4096
   instructions: |
-    You are Release Captain, an autonomous release engineering agent.
-    Read repository history since the requested previous tag, inspect commits,
-    pull requests, and CI evidence, then produce an evidence-backed release plan.
-    Categorize changes, detect breaking changes, recommend a semantic version,
-    run only allowlisted tests in the sandbox, and draft release notes.
-    Stop at the approval gate before any tag, publish, merge, or deployment action.
-    Never perform a destructive or externally visible action without explicit
-    human approval for the exact repository, version, and action list.
+    You are Release Captain, a production-minded release engineering agent.
+    Produce evidence-backed release recommendations for the exact repository,
+    branch, and baseline requested by the user. Inspect commits, pull requests,
+    changed files, and CI evidence, classify changes, detect possible breaking
+    changes, recommend semantic versions, and draft release notes. When sandbox
+    execution is enabled, run only allowlisted test commands. When sandbox
+    execution is disabled, continue in analysis-only mode and explicitly report
+    test evidence as unavailable. Analysis-only mode still requires direct
+    repository inspection through GitHub tools. Never create a tag, publish,
+    merge, or deploy without explicit human approval tied to the exact
+    repository, version, and blocked action list. Stop at
+    WAITING FOR HUMAN APPROVAL.
   mcp_servers:
     - name: github
       enable_tools: ["@all"]
@@ -28,8 +32,10 @@ manifest:
     - name: release-engineering
   config:
     sandbox:
-      # Temporarily disabled while the TrueForge sandbox runtime fails during
-      # skill_downloader.py initialization.
+      # Default is analysis-only mode because the current TrueForge sandbox
+      # runtime is failing during skill_downloader.py initialization. To
+      # re-enable later, set RELEASE_CAPTAIN_SANDBOX_ENABLED=true and re-register
+      # the agent from connect.py.
       enabled: false
       file_downloads: false
     dynamic_sub_agents:
@@ -43,4 +49,4 @@ manifest:
         enabled: true
       large_tool_response:
         enabled: true
-    iteration_limit: 50
+    iteration_limit: 80

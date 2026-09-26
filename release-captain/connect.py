@@ -33,6 +33,31 @@ client = TrueForge(
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def sandbox_enabled() -> bool:
+    return _env_flag("RELEASE_CAPTAIN_SANDBOX_ENABLED", _env_flag("TRUEFORGE_SANDBOX_ENABLED", False))
+
+
+def build_agent_instructions() -> str:
+    instructions = (PROJECT_ROOT / "agent" / "system_prompt.md").read_text()
+    if sandbox_enabled():
+        return instructions
+    return (
+        f"{instructions}\n\n"
+        "Runtime override:\n"
+        "- Sandbox execution is currently disabled.\n"
+        "- Operate in analysis-only mode.\n"
+        "- Do not attempt repository test execution.\n"
+        "- Explicitly report test evidence as unavailable because sandbox execution is disabled.\n"
+    )
+
+
 def _configured_mcp_names() -> set[str]:
     return {server.name for server in client.mcp_servers.list().data}
 
@@ -43,7 +68,6 @@ def _configured_skill_names() -> set[str]:
 
 def build_agent_spec() -> AgentSpec:
     """Build the verified SDK representation of trueforge.yaml."""
-    instructions = (PROJECT_ROOT / "agent" / "system_prompt.md").read_text()
     mcp_servers = []
     if "github" in _configured_mcp_names():
         mcp_servers.append(
@@ -63,15 +87,13 @@ def build_agent_spec() -> AgentSpec:
     return AgentSpec(
         model=Model(
             name=os.environ.get("TRUEFORGE_MODEL", "openai/gpt-5-4-mini"),
-            params=ModelParams(temperature=0.2, max_tokens=4096),
+            params=ModelParams(temperature=0.1, max_tokens=4096),
         ),
-        instructions=instructions,
+        instructions=build_agent_instructions(),
         mcp_servers=mcp_servers,
         skills=skills,
         config=RuntimeConfig(
-            # Temporary workaround for the current TrueForge sandbox runtime
-            # failure. Re-enable once skill_downloader.py is fixed/upgraded.
-            sandbox=SandboxConfig(enabled=False),
+            sandbox=SandboxConfig(enabled=sandbox_enabled()),
             dynamic_sub_agents=DynamicSubAgentsConfig(enabled=True),
             generative_ui=GenerativeUiConfig(enabled=True),
             ask_user_questions=AskUserQuestionsConfig(enabled=True),
@@ -79,7 +101,7 @@ def build_agent_spec() -> AgentSpec:
                 compaction=CompactionConfig(enabled=True),
                 large_tool_response=LargeToolResponseConfig(enabled=True),
             ),
-            iteration_limit=50,
+            iteration_limit=80,
         ),
     )
 
@@ -91,6 +113,18 @@ def register_release_captain():
         description="Autonomous release engineering agent with approval gates.",
         manifest=build_agent_spec(),
     )
+
+
+def sync_release_captain():
+    """Create or update the named agent in TrueForge."""
+    for agent in client.agents.list():
+        if agent.name == "release-captain":
+            return client.agents.update(
+                agent_id=agent.id,
+                manifest=build_agent_spec(),
+                description="Autonomous release engineering agent with approval gates.",
+            )
+    return register_release_captain()
 
 
 def create_release_session():
@@ -105,10 +139,14 @@ def stream_release_analysis(
     previous_tag: str | None = None,
 ) -> Iterator[object]:
     """Stream analysis events; the caller handles approval-required events."""
+    analysis_mode = "with sandbox test execution enabled" if sandbox_enabled() else "in analysis-only mode with sandbox test execution disabled"
     prompt = (
         f"Analyze repository {repository_url} from tag {previous_tag or 'the latest release'} "
-        f"on branch {branch}. Collect evidence, run allowlisted tests, prepare release notes, "
-        "and stop before any destructive action for human approval."
+        f"on branch {branch}. Operate {analysis_mode}. Use GitHub tools to inspect the repository directly, "
+        "collect commits, pull requests, changed files, tags, and CI evidence, prepare release notes, "
+        "and stop before any destructive action for human approval. "
+        "If sandbox execution is disabled, explicitly mark tests as unavailable instead of trying to run them. "
+        "If no previous tag exists, state the fallback baseline clearly."
     )
     return iter(
         client.sessions.create_turn_stream(
