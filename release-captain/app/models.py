@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field, HttpUrl
+
+
+def now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class SessionStatus(str, Enum):
+    created = "created"
+    collecting = "collecting"
+    analyzing = "analyzing"
+    testing = "testing"
+    ready_for_approval = "ready_for_approval"
+    approved = "approved"
+    executing = "executing"
+    completed = "completed"
+    rejected = "rejected"
+    failed = "failed"
+
+
+class CommitChange(BaseModel):
+    sha: str
+    message: str
+    author: str
+    category: str
+    breaking: bool = False
+
+
+class PullRequestChange(BaseModel):
+    number: int
+    title: str
+    author: str
+    labels: list[str] = Field(default_factory=list)
+    merged: bool = True
+
+
+class TestResult(BaseModel):
+    command: str
+    status: str
+    exit_code: int
+    duration_seconds: float
+    passed_count: Optional[int] = None
+    failed_count: Optional[int] = None
+    log_excerpt: str
+    sandbox_provider: str
+
+
+class Risk(BaseModel):
+    title: str
+    severity: str
+    evidence: list[str] = Field(default_factory=list)
+
+
+class ReleasePlan(BaseModel):
+    current_version: str = "0.0.0"
+    recommended_version: str
+    bump: str
+    summary: str
+    categories: dict[str, list[str]] = Field(default_factory=dict)
+    breaking_changes: list[str] = Field(default_factory=list)
+    risks: list[Risk] = Field(default_factory=list)
+    release_notes: str
+    proposed_actions: list[str]
+
+
+class ApprovalRequest(BaseModel):
+    approved: bool
+    plan_version: str
+    repository_url: str
+    actions: list[str]
+    comment: Optional[str] = None
+
+
+class AuditEvent(BaseModel):
+    timestamp: datetime = Field(default_factory=now)
+    action: str
+    status: str
+    detail: str
+
+
+class SessionCreate(BaseModel):
+    repository_url: HttpUrl
+    branch: str = "main"
+    previous_tag: Optional[str] = None
+    test_command: str = "pytest"
+
+
+class ReleaseSession(BaseModel):
+    id: str
+    repository_url: str
+    branch: str
+    previous_tag: Optional[str]
+    test_command: str
+    status: SessionStatus
+    created_at: datetime = Field(default_factory=now)
+    commits: list[CommitChange] = Field(default_factory=list)
+    pull_requests: list[PullRequestChange] = Field(default_factory=list)
+    test_result: Optional[TestResult] = None
+    plan: Optional[ReleasePlan] = None
+    audit: list[AuditEvent] = Field(default_factory=list)
+    approval: Optional[ApprovalRequest] = None
+    evidence: dict[str, Any] = Field(default_factory=dict)

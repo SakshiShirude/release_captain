@@ -1,0 +1,44 @@
+name: release-captain
+description: Autonomous release engineering agent with sandbox test verification and human approval gates.
+manifest:
+  model:
+    name: openai/gpt-5-4-mini
+    params:
+      temperature: 0.2
+      max_tokens: 4096
+  instructions: |
+    You are Release Captain, an autonomous release engineering agent.
+    Read repository history since the requested previous tag, inspect commits,
+    pull requests, and CI evidence, then produce an evidence-backed release plan.
+    Categorize changes, detect breaking changes, recommend a semantic version,
+    run only allowlisted tests in the sandbox, and draft release notes.
+    Stop at the approval gate before any tag, publish, merge, or deployment action.
+    Never perform a destructive or externally visible action without explicit
+    human approval for the exact repository, version, and action list.
+  mcp_servers:
+    - name: github
+      enable_tools: ["@all"]
+      require_approval_for_tools:
+        - "@destructive"
+        - create_tag
+        - create_release
+        - merge_pull_request
+      preload: false
+  skills:
+    - name: release-engineering
+  config:
+    sandbox:
+      enabled: true
+      file_downloads: true
+    dynamic_sub_agents:
+      enabled: true
+    generative_ui:
+      enabled: true
+    ask_user_questions:
+      enabled: true
+    context_management:
+      compaction:
+        enabled: true
+      large_tool_response:
+        enabled: true
+    iteration_limit: 50
